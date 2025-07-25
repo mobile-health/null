@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/guregu/null/v6/internal"
+	"github.com/mobile-health/null/internal"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

@@ -1,5 +1,5 @@
-## null [![GoDoc](https://godoc.org/github.com/guregu/null/v6?status.svg)](https://godoc.org/github.com/guregu/null/v6)
-`import "github.com/guregu/null/v6"`
+## null [![GoDoc](https://godoc.org/github.com/mobile-health/null?status.svg)](https://godoc.org/github.com/mobile-health/null)
+`import "github.com/mobile-health/null"`
 
 null is a library with reasonable options for dealing with nullable SQL and JSON values
 
@@ -18,7 +18,7 @@ Types in `zero` are treated like zero values in Go: blank string input will prod
 
 ## null package
 
-`import "github.com/guregu/null/v6"`
+`import "github.com/mobile-health/null"`
 
 #### null.String
 Nullable string.
@@ -51,7 +51,7 @@ Will marshal to JSON null if SQL source data is null. Does not implement `encodi
 
 ## zero package
 
-`import "github.com/guregu/null/v6/zero"`
+`import "github.com/mobile-health/null/zero"`
 
 #### zero.String
 Nullable string.
@@ -99,7 +99,7 @@ This package isn't intended to be a catch-all data-wrangling package. It is esse
 - Added `ValueOr` method to each type
 
 #### v5
-- Now a Go module under the path `github.com/guregu/null/v6`
+- Now a Go module under the path `github.com/mobile-health/null`
 - Added missing types from `database/sql`: `Int32, Int16, Byte`
 - Added generic `Value[T]` embedding `sql.Null[T]`
 
