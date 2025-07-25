@@ -113,3 +113,5 @@ func (b Byte) Equal(other Byte) bool {
 func (b Byte) value() (int64, bool) {
 	return int64(b.Byte), b.Valid
 }
+
+// Value implements the driver.Valuer interface.

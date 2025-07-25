@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null/v6/internal"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
@@ -411,4 +412,64 @@ func assertIntEqualIsFalse[N interface{ Equal(N) bool }](t *testing.T, a, b N) {
 	if a.Equal(b) {
 		t.Errorf("Equal() of %#v and %#v should return false", a, b)
 	}
+}
+
+func TestIntMarshalMsgpack(t *testing.T) {
+	t.Run("valid Int", func(t *testing.T) {
+		i := NewInt(123, true)
+		data, err := i.MarshalMsgpack()
+		maybePanic(err)
+		// Unmarshal to check correctness
+		var val int64
+		err = msgpack.Unmarshal(data, &val)
+		maybePanic(err)
+		if val != 123 {
+			t.Errorf("MarshalMsgpack: expected 123, got %d", val)
+		}
+	})
+
+	t.Run("invalid Int", func(t *testing.T) {
+		i := NewInt(0, false)
+		data, err := i.MarshalMsgpack()
+		maybePanic(err)
+		if !IsMsgpackNil(data) {
+			t.Errorf("MarshalMsgpack: expected msgpack nil, got %v", data)
+		}
+	})
+}
+
+func TestIntUnmarshalMsgpack(t *testing.T) {
+	t.Run("valid int", func(t *testing.T) {
+		var i Int
+		data, err := msgpack.Marshal(int64(123))
+		maybePanic(err)
+		err = i.UnmarshalMsgpack(data)
+		maybePanic(err)
+		if !i.Valid {
+			t.Error("expected Valid to be true")
+		}
+		if i.Int64 != 123 {
+			t.Errorf("expected Int64 to be 123, got %d", i.Int64)
+		}
+	})
+
+	t.Run("empty data", func(t *testing.T) {
+		var i Int
+		err := i.UnmarshalMsgpack([]byte{})
+		maybePanic(err)
+		if i.Valid {
+			t.Error("expected Valid to be false for empty data")
+		}
+	})
+
+	t.Run("invalid data", func(t *testing.T) {
+		var i Int
+		err := i.UnmarshalMsgpack([]byte{0xC1}) // 0xC1 is never used in msgpack
+		if err == nil {
+			t.Error("expected error for invalid msgpack data")
+		}
+		if i.Valid {
+			t.Error("expected Valid to be false for invalid data")
+		}
+	})
 }

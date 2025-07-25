@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Bool is a nullable bool.
@@ -134,4 +136,31 @@ func (b Bool) IsZero() bool {
 // Equal returns true if both booleans have the same value or are both null.
 func (b Bool) Equal(other Bool) bool {
 	return b.Valid == other.Valid && (!b.Valid || b.Bool == other.Bool)
+}
+
+// MarshalMsgpack implements msgpack.Marshaler.
+// It will encode null if this Bool is null.
+func (b Bool) MarshalMsgpack() ([]byte, error) {
+	if !b.Valid {
+		return MsgpackNil, nil
+	}
+
+	return msgpack.Marshal(b.Bool)
+}
+
+// UnmarshalMsgpack implements msgpack.Unmarshaler.
+// It supports boolean and null input.
+// It will unmarshal to a null Bool if the input is blank.
+func (b *Bool) UnmarshalMsgpack(data []byte) error {
+	if len(data) == 0 || IsMsgpackNil(data) {
+		b.Valid = false
+		return nil
+	}
+
+	if err := msgpack.Unmarshal(data, &b.Bool); err != nil {
+		return fmt.Errorf("null: couldn't unmarshal msgpack: %w", err)
+	}
+
+	b.Valid = true
+	return nil
 }

@@ -8,6 +8,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+
+	"github.com/vmihailenco/msgpack/v5"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 // String is a nullable string. It supports SQL and JSON serialization.
@@ -119,4 +122,29 @@ func (s String) IsZero() bool {
 // Equal returns true if both strings have the same value or are both null.
 func (s String) Equal(other String) bool {
 	return s.Valid == other.Valid && (!s.Valid || s.String == other.String)
+}
+
+// MarshalMsgpack implements msgpack.Marshaler.
+// It will encode null if this String is null.
+func (s String) MarshalMsgpack() ([]byte, error) {
+	if !s.Valid {
+		return []byte{msgpcode.Nil}, nil
+	}
+	return msgpack.Marshal(s.String)
+}
+
+// UnmarshalMsgpack implements msgpack.Unmarshaler.
+// It supports string and null input. Blank string input does not produce a null String.
+func (s *String) UnmarshalMsgpack(data []byte) error {
+	if len(data) == 0 || IsMsgpackNil(data) {
+		s.Valid = false
+		return nil
+	}
+
+	if err := msgpack.Unmarshal(data, &s.String); err != nil {
+		return fmt.Errorf("null: couldn't unmarshal msgpack: %w", err)
+	}
+
+	s.Valid = true
+	return nil
 }

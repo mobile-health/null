@@ -2,9 +2,11 @@ package null
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 
 	"github.com/guregu/null/v6/internal"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Int is an nullable int64.
@@ -115,4 +117,30 @@ func (i Int) Equal(other Int) bool {
 
 func (i Int) value() (int64, bool) {
 	return i.Int64, i.Valid
+}
+
+// MarshalMsgpack implements msgpack.Marshaler.
+// It will encode null if this String is null.
+func (i Int) MarshalMsgpack() ([]byte, error) {
+	if !i.Valid {
+		return MsgpackNil, nil
+	}
+	return msgpack.Marshal(i.Int64)
+}
+
+// UnmarshalMsgpack implements msgpack.Unmarshaler.
+// It supports string and null input. Blank string input does not produce a null String.
+func (i *Int) UnmarshalMsgpack(data []byte) error {
+	if len(data) == 0 || IsMsgpackNil(data) {
+		i.Valid = false
+		i.Int64 = 0 // Reset to zero value
+		return nil
+	}
+
+	if err := msgpack.Unmarshal(data, &i.Int64); err != nil {
+		return fmt.Errorf("null: couldn't unmarshal msgpack: %w", err)
+	}
+
+	i.Valid = true
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/guregu/null/v6/internal"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Float is a nullable float64.
@@ -133,4 +134,30 @@ func (f Float) IsZero() bool {
 // has changed in comparison to some previous value.
 func (f Float) Equal(other Float) bool {
 	return f.Valid == other.Valid && (!f.Valid || f.Float64 == other.Float64)
+}
+
+// MarshalMsgpack implements msgpack.Marshaler.
+// It will encode null if this Float is null.
+func (f Float) MarshalMsgpack() ([]byte, error) {
+	if !f.Valid {
+		return MsgpackNil, nil
+	}
+	return msgpack.Marshal(f.Float64)
+}
+
+// UnmarshalMsgpack implements msgpack.Unmarshaler.
+// It supports number and null input.
+// 0 will not be considered a null Float.
+func (f *Float) UnmarshalMsgpack(data []byte) error {
+	if len(data) == 0 || IsMsgpackNil(data) {
+		f.Valid = false
+		f.Float64 = 0 // Reset to zero value
+		return nil
+	}
+
+	if err := msgpack.Unmarshal(data, &f.Float64); err != nil {
+		return fmt.Errorf("null: couldn't unmarshal msgpack: %w", err)
+	}
+	f.Valid = true
+	return nil
 }

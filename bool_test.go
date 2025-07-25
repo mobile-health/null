@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
@@ -265,4 +267,75 @@ func assertBoolEqualIsFalse(t *testing.T, a, b Bool) {
 	if a.Equal(b) {
 		t.Errorf("Equal() of Bool{%t, Valid:%t} and Bool{%t, Valid:%t} should return false", a.Bool, a.Valid, b.Bool, b.Valid)
 	}
+}
+
+func TestBoolMarshalMsgpack(t *testing.T) {
+	// Valid true
+	b := BoolFrom(true)
+	data, err := b.MarshalMsgpack()
+	maybePanic(err)
+	var decoded bool
+	err = msgpack.Unmarshal(data, &decoded)
+	maybePanic(err)
+	if decoded != true {
+		t.Errorf("MarshalMsgpack: expected true, got %v", decoded)
+	}
+
+	// Valid false
+	b = BoolFrom(false)
+	data, err = b.MarshalMsgpack()
+	maybePanic(err)
+	err = msgpack.Unmarshal(data, &decoded)
+	maybePanic(err)
+	if decoded != false {
+		t.Errorf("MarshalMsgpack: expected false, got %v", decoded)
+	}
+
+	// Invalid/null
+	b = NewBool(false, false)
+	data, err = b.MarshalMsgpack()
+	maybePanic(err)
+	if !IsMsgpackNil(data) {
+		t.Errorf("MarshalMsgpack: expected msgpack nil, got %v", data)
+	}
+}
+
+func TestBoolUnmarshalMsgpack(t *testing.T) {
+	// true value
+	trueData, err := msgpack.Marshal(true)
+	maybePanic(err)
+	var bTrue Bool
+	err = bTrue.UnmarshalMsgpack(trueData)
+	maybePanic(err)
+	assertBool(t, bTrue, "UnmarshalMsgpack(true)")
+
+	// false value
+	falseData, err := msgpack.Marshal(false)
+	maybePanic(err)
+	var bFalse Bool
+	err = bFalse.UnmarshalMsgpack(falseData)
+	maybePanic(err)
+	if bFalse.Bool != false || !bFalse.Valid {
+		t.Errorf("UnmarshalMsgpack(false): got %v, valid %v; want false, valid", bFalse.Bool, bFalse.Valid)
+	}
+
+	// nil value (msgpack nil)
+	var bNil Bool
+	err = bNil.UnmarshalMsgpack(MsgpackNil)
+	maybePanic(err)
+	assertNullBool(t, bNil, "UnmarshalMsgpack(nil)")
+
+	// empty data
+	var bEmpty Bool
+	err = bEmpty.UnmarshalMsgpack([]byte{})
+	maybePanic(err)
+	assertNullBool(t, bEmpty, "UnmarshalMsgpack(empty)")
+
+	// invalid data
+	var bInvalid Bool
+	err = bInvalid.UnmarshalMsgpack([]byte{0xFF})
+	if err == nil {
+		t.Error("UnmarshalMsgpack(invalid): expected error, got nil")
+	}
+	assertNullBool(t, bInvalid, "UnmarshalMsgpack(invalid)")
 }

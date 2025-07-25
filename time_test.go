@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
@@ -267,6 +269,75 @@ func TestTimeExactEqual(t *testing.T) {
 	t1 = NewTime(timeValue1, true)
 	t2 = NewTime(timeValue3, true)
 	assertTimeExactEqualIsFalse(t, t1, t2)
+}
+
+func TestTimeMarshalMsgpack(t *testing.T) {
+	// Valid time
+	ti := TimeFrom(timeValue1)
+	data, err := ti.MarshalMsgpack()
+	if err != nil {
+		t.Errorf("MarshalMsgpack() error = %v", err)
+	}
+	// Unmarshal back to time.Time to check correctness
+	var unmarshaled time.Time
+	err = msgpack.Unmarshal(data, &unmarshaled)
+	if err != nil {
+		t.Errorf("UnmarshalMsgpack() error = %v", err)
+	}
+	if !unmarshaled.Equal(timeValue1) {
+		t.Errorf("MarshalMsgpack() = %v, want %v", unmarshaled, timeValue1)
+	}
+
+	// Invalid (null) time
+	invalid := Time{}
+	data, err = invalid.MarshalMsgpack()
+	if err != nil {
+		t.Errorf("MarshalMsgpack() error = %v", err)
+	}
+	if !IsMsgpackNil(data) {
+		t.Errorf("MarshalMsgpack() for invalid time should return msgpack nil, got %v", data)
+	}
+}
+
+func TestTimeUnmarshalMsgpack(t *testing.T) {
+	// Valid time marshaled with msgpack
+	msgpackData, err := msgpack.Marshal(timeValue1)
+	maybePanic(err)
+	var ti Time
+	err = ti.UnmarshalMsgpack(msgpackData)
+	if err != nil {
+		t.Errorf("UnmarshalMsgpack() error = %v", err)
+	}
+	if !ti.Valid {
+		t.Errorf("UnmarshalMsgpack() did not set Valid to true for valid data")
+	}
+	if !ti.Time.Equal(timeValue1) {
+		t.Errorf("UnmarshalMsgpack() got time %v, want %v", ti.Time, timeValue1)
+	}
+
+	// Empty data should result in invalid Time
+	var null Time
+	err = null.UnmarshalMsgpack([]byte{})
+	if err != nil {
+		t.Errorf("UnmarshalMsgpack() error for empty data = %v", err)
+	}
+	if null.Valid {
+		t.Errorf("UnmarshalMsgpack() Valid should be false for empty data")
+	}
+	if !null.Time.IsZero() {
+		t.Errorf("UnmarshalMsgpack() Time should be zero for empty data, got %v", null.Time)
+	}
+
+	// Invalid msgpack data
+	var invalid Time
+	badData := []byte{0xff, 0x00, 0x01}
+	err = invalid.UnmarshalMsgpack(badData)
+	if err == nil {
+		t.Errorf("UnmarshalMsgpack() expected error for invalid data, got nil")
+	}
+	if invalid.Valid {
+		t.Errorf("UnmarshalMsgpack() Valid should be false for invalid data")
+	}
 }
 
 func assertTime(t *testing.T, ti Time, from string) {

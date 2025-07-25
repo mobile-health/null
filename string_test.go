@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
@@ -269,4 +271,42 @@ func assertStringEqualIsFalse(t *testing.T, a, b String) {
 	if a.Equal(b) {
 		t.Errorf("Equal() of String{\"%v\", Valid:%t} and String{\"%v\", Valid:%t} should return false", a.String, a.Valid, b.String, b.Valid)
 	}
+}
+
+func TestStringMarshalMsgpack(t *testing.T) {
+	// Valid string should marshal to msgpack encoded string
+	str := StringFrom("test")
+	data, err := str.MarshalMsgpack()
+	maybePanic(err)
+	var decoded string
+	err = msgpack.Unmarshal(data, &decoded)
+	maybePanic(err)
+	if decoded != "test" {
+		t.Errorf("MarshalMsgpack: expected 'test', got '%s'", decoded)
+	}
+
+	// Invalid (null) string should marshal to empty byte slice
+	nullStr := StringFromPtr(nil)
+	data, err = nullStr.MarshalMsgpack()
+	maybePanic(err)
+	if !IsMsgpackNil(data) {
+		t.Errorf("MarshalMsgpack: expected msgpack nil, got %v", data)
+	}
+}
+
+func TestUnmarshalMsgpackString(t *testing.T) {
+	// Valid string
+	val := "test"
+	data, err := msgpack.Marshal(val)
+	maybePanic(err)
+	var s String
+	err = s.UnmarshalMsgpack(data)
+	maybePanic(err)
+	assertStr(t, s, "UnmarshalMsgpack() string")
+
+	// Empty data (should be null)
+	var s2 String
+	err = s2.UnmarshalMsgpack(MsgpackNil)
+	maybePanic(err)
+	assertNullStr(t, s2, "UnmarshalMsgpack() empty data")
 }

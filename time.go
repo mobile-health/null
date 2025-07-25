@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Time is a nullable time.Time. It supports SQL and JSON serialization.
@@ -144,4 +146,28 @@ func (t Time) Equal(other Time) bool {
 // have a different monotonic clock reading.
 func (t Time) ExactEqual(other Time) bool {
 	return t.Valid == other.Valid && (!t.Valid || t.Time == other.Time)
+}
+
+// MarshalMsgpack implements msgpack.Marshaler.
+func (t Time) MarshalMsgpack() ([]byte, error) {
+	if !t.Valid {
+		return MsgpackNil, nil
+	}
+	return msgpack.Marshal(t.Time)
+}
+
+// UnmarshalMsgpack implements msgpack.Unmarshaler.
+func (t *Time) UnmarshalMsgpack(data []byte) error {
+	if len(data) == 0 || IsMsgpackNil(data) {
+		t.Valid = false
+		t.Time = time.Time{}
+		return nil
+	}
+
+	if err := msgpack.Unmarshal(data, &t.Time); err != nil {
+		return fmt.Errorf("null: couldn't unmarshal msgpack: %w", err)
+	}
+
+	t.Valid = true
+	return nil
 }

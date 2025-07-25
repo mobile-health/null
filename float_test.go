@@ -5,6 +5,8 @@ import (
 	"errors"
 	"math"
 	"testing"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
@@ -242,6 +244,58 @@ func TestFloatEqual(t *testing.T) {
 	f1 = NewFloat(10, true)
 	f2 = NewFloat(20, true)
 	assertFloatEqualIsFalse(t, f1, f2)
+}
+
+func TestFloatMarshalMsgpack(t *testing.T) {
+	// Valid float
+	f := FloatFrom(1.2345)
+	data, err := f.MarshalMsgpack()
+	maybePanic(err)
+	var decoded float64
+	err = msgpack.Unmarshal(data, &decoded)
+	maybePanic(err)
+	if decoded != 1.2345 {
+		t.Errorf("MarshalMsgpack: expected 1.2345, got %v", decoded)
+	}
+
+	// Null float
+	null := NewFloat(0, false)
+	data, err = null.MarshalMsgpack()
+	maybePanic(err)
+	if !IsMsgpackNil(data) {
+		t.Errorf("MarshalMsgpack: expected msgpack nil, got %v", data)
+	}
+}
+
+func TestFloatUnmarshalMsgpack(t *testing.T) {
+	// Valid float
+	val := 1.2345
+	data, err := msgpack.Marshal(val)
+	maybePanic(err)
+	var f Float
+	err = f.UnmarshalMsgpack(data)
+	maybePanic(err)
+	assertFloat(t, f, "UnmarshalMsgpack() valid float")
+
+	// Null (msgpack nil)
+	var null Float
+	err = null.UnmarshalMsgpack(MsgpackNil)
+	maybePanic(err)
+	assertNullFloat(t, null, "UnmarshalMsgpack() msgpack nil")
+
+	// Empty data
+	var empty Float
+	err = empty.UnmarshalMsgpack([]byte{})
+	maybePanic(err)
+	assertNullFloat(t, empty, "UnmarshalMsgpack() empty data")
+
+	// Invalid data
+	var invalid Float
+	badData := []byte{0xc1} // 0xc1 is never used in msgpack (invalid code)
+	err = invalid.UnmarshalMsgpack(badData)
+	if err == nil {
+		t.Error("expected error for invalid msgpack data, got nil")
+	}
 }
 
 func assertFloat(t *testing.T, f Float, from string) {
